@@ -14,6 +14,7 @@ public enum NATSProtocolVerb {
 
     //Client only
     CONNECT ("CONNECT", true, false),
+    DISCONNECT ("DISCONNECT", true, false), //NOT SENT TO SERVER, just terminate conneciton.
     PUBLISH ("PUB", true, false),
     SUBSCRIBE ("SUB", true, false),
     UNSUBSCRIBE ("UNSUB", true, false);
