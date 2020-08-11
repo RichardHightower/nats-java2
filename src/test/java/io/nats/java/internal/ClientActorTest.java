@@ -116,9 +116,12 @@ public class ClientActorTest {
 
         Thread thread = createRunner(clientActor);
 
+
         sendConnectInfo();
+        Thread.sleep(100);
 
         stopRunner(clientActor, thread);
+        Thread.sleep(100);
 
 
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
