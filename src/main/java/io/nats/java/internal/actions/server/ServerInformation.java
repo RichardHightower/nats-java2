@@ -84,4 +84,56 @@ public class ServerInformation implements Action {
         return new ServerInformation(serverId,version, go, host, port, maxPayloadBytes,
                 proto, clientId, authRequired, tlsRequired, tlsVerify, connectUrls, lameDuckMode);
     }
+
+    public String getServerId() {
+        return serverId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public String getGo() {
+        return go;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public int getMaxPayloadBytes() {
+        return maxPayloadBytes;
+    }
+
+    public int getProto() {
+        return proto;
+    }
+
+    public long getClientId() {
+        return clientId;
+    }
+
+    public boolean isAuthRequired() {
+        return authRequired;
+    }
+
+    public boolean isTlsRequired() {
+        return tlsRequired;
+    }
+
+    public boolean isTlsVerify() {
+        return tlsVerify;
+    }
+
+    public List<ConnectURL> getConnectUrls() {
+        return connectUrls;
+    }
+
+    public boolean isLameDuckMode() {
+        return lameDuckMode;
+    }
 }

@@ -3,6 +3,8 @@ package io.nats.java.internal.actions.client;
 import io.nats.java.internal.Action;
 import io.nats.java.internal.NATSProtocolVerb;
 
+import java.util.Arrays;
+
 /** This is sent from the client to the server after the client gets the first INFO from the server which is after it connects.
  *
  *  1. <<establish TCP connection>>
@@ -51,4 +53,21 @@ public class Connect implements Action {
         return NATSProtocolVerb.CONNECT;
     }
 
+    @Override
+    public String toString() {
+        return "Connect{" +
+                "verbose=" + verbose +
+                ", pedantic=" + pedantic +
+                ", tlsRequired=" + tlsRequired +
+                ", authToken='" + authToken + '\'' +
+                ", user='" + user + '\'' +
+                ", name='" + name + '\'' +
+                ", lang='" + lang + '\'' +
+                ", version='" + version + '\'' +
+                ", protocol=" + protocol +
+                ", echo=" + echo +
+                ", sig='" + sig + '\'' +
+                ", jwt='" + jwt + '\'' +
+                '}';
+    }
 }

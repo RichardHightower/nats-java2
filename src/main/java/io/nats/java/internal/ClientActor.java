@@ -74,18 +74,23 @@ public class ClientActor {
     /** Server Info. */
     private ServerInformation serverInformation;
 
-    public ClientActor(final InputQueue<ServerMessage> queue,
-                       final OutputQueue<Action> output,
+
+
+    public ClientActor(final InputQueue<ServerMessage> serverInputChannel,
+                       final OutputQueue<Action> serverOutputChannel,
                        final Duration pauseDuration,
                        final ClientErrorHandler errorHandler,
                        final Connect connectInfo) {
-        this.serverInputChannel = queue;
+        this.serverInputChannel = serverInputChannel;
         this.pauseDuration = pauseDuration;
         this.errorHandler = errorHandler;
-        this.serverOutputChannel = output;
+        this.serverOutputChannel = serverOutputChannel;
         this.connectInfo = connectInfo;
     }
 
+    public ServerInformation getServerInformation() {
+        return serverInformation;
+    }
 
     /** Generate next inbox for request/reply. */
     private String nextInbox() {
@@ -98,36 +103,41 @@ public class ClientActor {
         doStop.set(true);
     }
 
+
+
     public void run() {
 
         try {
-            boolean pause = false;
-            InputQueueMessage<io.nats.java.internal.ServerMessage> next;
-            Exception lastError = null;
-            Action clientAction;
+
             long startTime = System.currentTimeMillis();
             long lastTime = startTime;
+            Exception lastError = null;
+
 
             loop_exit:
             while (!doStop.get()) {
+
+                boolean pause = false;
+;
                 for (int index = 0; index < 100; index++) {
 
-                    clientAction = clientInputActions.poll();
+                    Action clientAction = clientInputActions.poll();
                     while (clientAction != null) {
                         handleClientAction(clientAction);
                         clientAction = clientInputActions.poll();
                     }
 
-                    next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
-                    if (next.isDone()) {
-                        break loop_exit;
+                    final InputQueueMessage<ServerMessage> next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
+                    if (next.isPresent()) {
+                        handleServerMessage(next.value());
                     } else if (next.isError()) {
                         errorHandler.handleError(next.error());
                         lastError = next.error();
                         break loop_exit;
                     } else if (!next.isPresent()) {
                         pause = true;
-                        handleServerMessage(next.value());
+                    } else if (next.isDone()) {
+                        break loop_exit;
                     } else {
                         pause = false;
                     }
@@ -184,25 +194,34 @@ public class ClientActor {
             switch (message.verb()) {
                 case INFO:
                     handleServerInfo(ServerInformation.parse(message.getBytes()));
+                    break;
                 case OK:
                     handleOk();
+                    break;
                 case PING:
                     handlePing();
+                    break;
                 case MESSAGE:
                     handleMessage(ReceiveMessage.parse(message.getBytes()));
+                    break;
                 case ERROR:
                     handleError(ServerError.parse(message.getBytes()));
+                    break;
             }
         } else {
             switch (message.verb()) {
                 case INFO:
                     handleServerConnectInfo(ServerInformation.parse(message.getBytes()));
+                    break;
                 case OK:
                     handleOk();
+                    break;
                 case PING:
                     handlePing();
+                    break;
                 case ERROR:
                     handleError(ServerError.parse(message.getBytes()));
+                    break;
                 default:
                     throw new IllegalStateException(String.format("CAN'T RECEIVE %s MESSAGE until connected", message.verb()));
             }
