@@ -1,6 +1,6 @@
 package io.nats.java.internal;
 
-public class ServerMessage {
+public class ServerMessage implements VerbHolder{
     private final byte[] bytes;
     private final NATSProtocolVerb verb;
 
@@ -13,7 +13,7 @@ public class ServerMessage {
         return bytes;
     }
 
-    public NATSProtocolVerb getVerb() {
+    public NATSProtocolVerb verb() {
         return verb;
     }
     

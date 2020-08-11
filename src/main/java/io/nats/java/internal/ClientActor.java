@@ -94,7 +94,7 @@ public class ClientActor {
     private void handleServerMessage(final io.nats.java.internal.ServerMessage message) {
 
         if (connected) {
-            switch (message.getVerb()) {
+            switch (message.verb()) {
                 case INFO:
                     handleServerInfo(ServerInformation.parse(message.getBytes()));
                 case OK:
@@ -102,14 +102,14 @@ public class ClientActor {
                 case PING:
                     handlePing();
                 case SUBSCRIBE:
-                    handleSubscribe(Subscribe.parse(message.getBytes()));
+                    handleSubscribe(Subscribe.parse(message.getBytes())); // TODO Not a server message.
                 case UNSUBSCRIBE:
-                    handleUnsubscribe(Unsubscribe.parse(message.getBytes()));
+                    handleUnsubscribe(Unsubscribe.parse(message.getBytes())); // TODO Not a server message.
                 case MESSAGE:
-                    handleMessage(ReceiveMessage.parse(message.getBytes()));
+                    handleMessage(ReceiveMessage.parse(message.getBytes())); // TODO Not a server message.
             }
         } else {
-            switch (message.getVerb()) {
+            switch (message.verb()) {
                 case INFO:
                     handleServerConnectInfo(ServerInformation.parse(message.getBytes()));
                 case OK:
@@ -119,7 +119,7 @@ public class ClientActor {
                 case ERROR:
                     handleError(ServerError.parse(message.getBytes()));
                 default:
-                    throw new IllegalStateException(String.format("CAN'T RECEIVE %s MESSAGE until connected", message.getVerb()));
+                    throw new IllegalStateException(String.format("CAN'T RECEIVE %s MESSAGE until connected", message.verb()));
             }
         }
     }
