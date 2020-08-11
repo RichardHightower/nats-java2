@@ -220,5 +220,20 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
         return isClosed();
     }
 
+    @Override
+    public String subject() {
+        return subscribe.getSubject();
+    }
+
+    @Override
+    public String queueGroup() {
+        return subscribe.getQueueGroup();
+    }
+
+    @Override
+    public String sid() {
+        return subscribe.getSid();
+    }
+
 
 }
