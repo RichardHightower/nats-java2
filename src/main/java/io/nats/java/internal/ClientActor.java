@@ -15,6 +15,8 @@ import io.nats.java.internal.actions.server.ServerError;
 import io.nats.java.internal.actions.server.ServerInformation;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientActor {
@@ -24,6 +26,7 @@ public class ClientActor {
     private final ClientErrorHandler errorHandler;
     private final OutputQueue<Action> output;
     private final Connect connectInfo;
+    private final Map<String, SubscriptionHandler> subscriptions = new HashMap<>();
 
 
     private AtomicBoolean doStop = new AtomicBoolean();
@@ -130,16 +133,25 @@ public class ClientActor {
     }
 
     private void handleMessage(final ReceiveMessage message) {
-        //TODO
+
+        final SubscriptionHandler subscriptionHandler = subscriptions.get(message.getSid());
+
+        //Handle null case.
+        subscriptionHandler.send(message);
+
     }
 
     private void handleUnsubscribe(final Unsubscribe unsubscribe) {
-        //TODO
+        final SubscriptionHandler subscriptionHandler = subscriptions.get(unsubscribe.getSid());
+        //Handle null case.
+        subscriptionHandler.unsubscribe(unsubscribe.getMaxMessages());
+        output.send(unsubscribe);
+
     }
 
     private void handleSubscribe(final Subscribe subscribe) {
-        //TODO
-
+       subscriptions.put(subscribe.getSid(), new SubscriptionHandler(subscribe));
+       output.send(subscribe);
     }
 
     private void handleServerInfo(ServerInformation newInfo) {

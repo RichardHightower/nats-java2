@@ -38,5 +38,15 @@ public class Subscribe implements Action {
     }
 
 
+    public String getSubject() {
+        return subject;
+    }
 
+    public String getQueueGroup() {
+        return queueGroup;
+    }
+
+    public String getSid() {
+        return sid;
+    }
 }

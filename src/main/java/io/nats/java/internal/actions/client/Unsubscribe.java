@@ -52,5 +52,11 @@ public class Unsubscribe implements Action {
         return NATSProtocolVerb.UNSUBSCRIBE;
     }
 
+    public String getSid() {
+        return sid;
+    }
 
+    public int getMaxMessages() {
+        return maxMessages;
+    }
 }
