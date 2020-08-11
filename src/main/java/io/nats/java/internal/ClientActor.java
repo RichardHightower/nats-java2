@@ -22,6 +22,12 @@ import java.util.concurrent.TransferQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Client implemented using actor model.
+ * Input and output.
+ * All methods end up being queued.
+ * No thread sync logic, as main run method just polls queues.
+ * Order of operations guaranteed.
+ */
 public class ClientActor {
 
     /** Input IO sits on the other side of this channel. */
