@@ -20,6 +20,8 @@ public class Publish implements Action {
     //#bytes: The payload size in bytes stored in length of payload.
     private final byte[] payload; // The message payload data
 
+
+
     public Publish(String subject, String replyTo, byte[] payload) {
         this.subject = subject;
         this.replyTo = replyTo;
@@ -31,5 +33,16 @@ public class Publish implements Action {
         return NATSProtocolVerb.PUBLISH;
     }
 
+    public String getSubject() {
+        return subject;
+    }
+
+    public String getReplyTo() {
+        return replyTo;
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 
 }

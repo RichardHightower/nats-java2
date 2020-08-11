@@ -16,11 +16,13 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
     private boolean closed = false;
     private int count = Integer.MIN_VALUE;
     private final Subscribe subscribe;
+    private final long created;
 
     private TransferQueue<InputQueueMessage<Message>> messageQueue = new LinkedTransferQueue<>();
 
-    public SubscriptionHandler(Subscribe subscribe) {
+    public SubscriptionHandler(Subscribe subscribe, long created) {
         this.subscribe = subscribe;
+        this.created = created;
     }
 
 
@@ -239,5 +241,11 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
         return subscribe.getSid();
     }
 
+    public long getCreated() {
+        return created;
+    }
 
+    public int getCount() {
+        return count;
+    }
 }
