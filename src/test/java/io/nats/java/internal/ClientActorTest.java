@@ -2,10 +2,13 @@ package io.nats.java.internal;
 
 import io.nats.java.InputQueue;
 import io.nats.java.InputQueueMessage;
+import io.nats.java.Message;
+import io.nats.java.Subscription;
 import io.nats.java.internal.actions.OutputQueue;
 import io.nats.java.internal.actions.client.Connect;
 import io.nats.java.internal.actions.client.ConnectBuilder;
 import io.nats.java.internal.actions.client.Disconnect;
+import io.nats.java.internal.actions.client.Subscribe;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -108,22 +111,23 @@ public class ClientActorTest {
     }
 
     @Test
-    public void testConnect() {
+    public void testConnect() throws Exception {
         final ClientActor clientActor = builder.build();
 
         Thread thread = createRunner(clientActor);
 
+
         sendConnectInfo();
+        Thread.sleep(100);
 
         stopRunner(clientActor, thread);
+        Thread.sleep(100);
 
 
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
-        System.out.println(serverOutputChannel);
-        assertEquals(2, serverOutputChannel.size());
 
-        Action action = serverOutputChannel.poll();
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
@@ -135,6 +139,49 @@ public class ClientActorTest {
         assertNull(exceptionAtomicReference.get());
 
 
+    }
+
+    @Test
+    public void testSubscribe() throws Exception {
+
+        final String subject = "subject1";
+
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+        sendConnectInfo();
+
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        assertTrue(action instanceof Connect);
+
+
+        assertNull(exceptionAtomicReference.get());
+
+        final Subscription subscription = clientActor.subscribe(subject);
+        final String sid = subscription.sid();
+
+
+        action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && !(action instanceof Subscribe)) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action instanceof Subscribe);
+
+        sendMessage("Hello Mom", subject, sid);
+
+        final InputQueueMessage<Message> next = subscription.next(Duration.ofSeconds(10));
+        assertTrue(next.isPresent());
+
+
+        assertEquals("Hello Mom", new String(next.value().getPayload(), StandardCharsets.UTF_8));
+
+        stopRunner(clientActor, thread);
     }
 
     private void stopRunner(ClientActor clientActor, Thread thread) {
@@ -153,29 +200,35 @@ public class ClientActorTest {
         return thread;
     }
 
-    private void sendConnectInfo() {
-        final String info = "INFO {\"server_id\":\"Zk0GQ3JBSrg3oyxCRRlE09\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1.10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}";
+
+    private void sendMessage(final String payLoad, final String subject, final String sid) {
+        final String message = String.format("MSG %s %s  %d\r\n%s\r\n", subject, sid, payLoad.length(), payLoad);
 
         serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
-            @Override
-            public boolean isError() {
-                return false;
-            }
 
             @Override
             public boolean isPresent() {
                 return true;
             }
 
-            @Override
-            public boolean isDone() {
-                return false;
-            }
 
             @Override
-            public Exception error() {
-                return null;
+            public ServerMessage value() {
+                return new ServerMessage(message.getBytes(StandardCharsets.UTF_8), NATSProtocolVerb.MESSAGE);
             }
+        });
+    }
+
+    private void sendConnectInfo() {
+        final String info = "INFO {\"server_id\":\"Zk0GQ3JBSrg3oyxCRRlE09\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1.10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}\r\n";
+
+        serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
+
+            @Override
+            public boolean isPresent() {
+                return true;
+            }
+
 
             @Override
             public ServerMessage value() {
@@ -187,30 +240,6 @@ public class ClientActorTest {
     private InputQueueMessage<ServerMessage> getServerMessageInputQueueMessage(InputQueueMessage<ServerMessage> next) {
         if (next == null) {
             return new InputQueueMessage<ServerMessage>() {
-                @Override
-                public boolean isError() {
-                    return false;
-                }
-
-                @Override
-                public boolean isPresent() {
-                    return false;
-                }
-
-                @Override
-                public boolean isDone() {
-                    return false;
-                }
-
-                @Override
-                public Exception error() {
-                    return null;
-                }
-
-                @Override
-                public ServerMessage value() {
-                    return null;
-                }
             };
         } else {
             return next;
