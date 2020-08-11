@@ -111,7 +111,7 @@ public class ClientActorTest {
     }
 
     @Test
-    public void testConnect() {
+    public void testConnect() throws Exception {
         final ClientActor clientActor = builder.build();
 
         Thread thread = createRunner(clientActor);
@@ -123,10 +123,8 @@ public class ClientActorTest {
 
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
-        System.out.println(serverOutputChannel);
-        assertEquals(2, serverOutputChannel.size());
 
-        Action action = serverOutputChannel.poll();
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
