@@ -34,86 +34,19 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
             this.count = count;
         }
 
-        @Override
-        public boolean isError() {
-            return false;
-        }
-
-        @Override
-        public boolean isPresent() {
-            return false;
-        }
-
-        @Override
-        public boolean isDone() {
-            return false;
-        }
-
-        @Override
-        public Exception error() {
-            return null;
-        }
-
-        @Override
-        public Message value() {
-            return null;
-        }
     }
 
     public static class NoMessage implements InputQueueMessage<Message> {
 
-        @Override
-        public boolean isError() {
-            return false;
-        }
-
-        @Override
-        public boolean isPresent() {
-            return false;
-        }
-
-        @Override
-        public boolean isDone() {
-            return false;
-        }
-
-        @Override
-        public Exception error() {
-            return null;
-        }
-
-        @Override
-        public Message value() {
-            return null;
-        }
     }
 
     public static class DoneMessage implements InputQueueMessage<Message> {
-
-        @Override
-        public boolean isError() {
-            return false;
-        }
-
-        @Override
-        public boolean isPresent() {
-            return false;
-        }
 
         @Override
         public boolean isDone() {
             return true;
         }
 
-        @Override
-        public Exception error() {
-            return null;
-        }
-
-        @Override
-        public Message value() {
-            return null;
-        }
     }
 
     private static NoMessage NO_MESSAGE = new NoMessage();
@@ -127,23 +60,8 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
         }
 
         @Override
-        public boolean isError() {
-            return false;
-        }
-
-        @Override
         public boolean isPresent() {
             return true;
-        }
-
-        @Override
-        public boolean isDone() {
-            return false;
-        }
-
-        @Override
-        public Exception error() {
-            return null;
         }
 
         @Override

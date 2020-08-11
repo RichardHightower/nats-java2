@@ -174,10 +174,13 @@ public class ClientActor {
             switch (clientAction.verb()) {
                 case SUBSCRIBE:
                     handleSubscribe((Subscribe) clientAction);
+                    break;
                 case UNSUBSCRIBE:
                     handleUnsubscribe((Unsubscribe) clientAction);
+                    break;
                 case PUBLISH:
                     handlePublish((Publish) clientAction);
+                    break;
             }
         } else {
             //TODO warn.. subscribe or unsubscribe called before connecting.
@@ -283,6 +286,7 @@ public class ClientActor {
 
     private void handleServerConnectInfo(final ServerInformation newServerInfo) {
         serverInformation = newServerInfo;
+        this.connected = true;
         serverOutputChannel.send(connectInfo);
     }
 
