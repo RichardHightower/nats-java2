@@ -136,22 +136,29 @@ public class ClientActor {
 
         final SubscriptionHandler subscriptionHandler = subscriptions.get(message.getSid());
 
-        //Handle null case.
-        subscriptionHandler.send(message);
+        if (subscriptionHandler!=null) {
+            subscriptionHandler.send(message);
+        } else {
+            //TODO log this or something.
+        }
 
     }
 
     private void handleUnsubscribe(final Unsubscribe unsubscribe) {
         final SubscriptionHandler subscriptionHandler = subscriptions.get(unsubscribe.getSid());
-        //Handle null case.
-        subscriptionHandler.unsubscribe(unsubscribe.getMaxMessages());
-        output.send(unsubscribe);
+
+        if (subscriptionHandler != null) {
+            subscriptionHandler.unsubscribe(unsubscribe.getMaxMessages());
+            output.send(unsubscribe);
+        } else {
+            //TODO log this;
+        }
 
     }
 
     private void handleSubscribe(final Subscribe subscribe) {
-       subscriptions.put(subscribe.getSid(), new SubscriptionHandler(subscribe));
-       output.send(subscribe);
+        subscriptions.put(subscribe.getSid(), new SubscriptionHandler(subscribe));
+        output.send(subscribe);
     }
 
     private void handleServerInfo(ServerInformation newInfo) {

@@ -170,6 +170,10 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
             return inputQueueMessage;
         } else if (inputQueueMessage instanceof UnsubscribeInputQueueMessage) {
             this.count = ((UnsubscribeInputQueueMessage) inputQueueMessage).count;
+            if (this.count ==0) {
+                this.closed = true;
+                messageQueue.add(DONE_MESSAGE);
+            }
             return next();
         } else if (inputQueueMessage instanceof DoneMessage) {
             return inputQueueMessage;
