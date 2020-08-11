@@ -17,11 +17,14 @@ import io.nats.java.internal.actions.server.ServerInformation;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.TransferQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientActor {
 
     private final InputQueue<io.nats.java.internal.ServerMessage> input;
+    private final TransferQueue<Action> clientActions = new LinkedTransferQueue<>(); //Implement subscribe, publish, unsubscribe, etc. with this.
     private final Duration pauseDuration;
     private final ClientErrorHandler errorHandler;
     private final OutputQueue<Action> output;
@@ -55,9 +58,16 @@ public class ClientActor {
             boolean pause = false;
             InputQueueMessage<io.nats.java.internal.ServerMessage> next;
             Exception lastError = null;
+            Action clientAction;
             loop_exit:
             while (!doStop.get()) {
                 for (int index = 0; index < 100; index++) {
+
+                    clientAction = clientActions.poll();
+                    while (clientAction != null) {
+                        handleClientAction(clientAction);
+                        clientAction = clientActions.poll();
+                    }
 
                     next = !pause ? input.next() : input.next(pauseDuration);
                     if (next.isDone()) {
@@ -91,6 +101,19 @@ public class ClientActor {
         }
     }
 
+    private void handleClientAction(Action clientAction) {
+        if (connected) {
+            switch (clientAction.verb()) {
+                case SUBSCRIBE:
+                    handleSubscribe((Subscribe) clientAction);
+                case UNSUBSCRIBE:
+                    handleUnsubscribe((Unsubscribe) clientAction);
+            }
+        } else {
+            //TODO warn.. subscribe or unsubscribe called before connecting.
+        }
+    }
+
     private void handleServerMessage(final io.nats.java.internal.ServerMessage message) {
 
         if (connected) {
@@ -101,12 +124,8 @@ public class ClientActor {
                     handleOk();
                 case PING:
                     handlePing();
-                case SUBSCRIBE:
-                    handleSubscribe(Subscribe.parse(message.getBytes())); // TODO Not a server message.
-                case UNSUBSCRIBE:
-                    handleUnsubscribe(Unsubscribe.parse(message.getBytes())); // TODO Not a server message.
                 case MESSAGE:
-                    handleMessage(ReceiveMessage.parse(message.getBytes())); // TODO Not a server message.
+                    handleMessage(ReceiveMessage.parse(message.getBytes()));
             }
         } else {
             switch (message.verb()) {
@@ -136,7 +155,7 @@ public class ClientActor {
 
         final SubscriptionHandler subscriptionHandler = subscriptions.get(message.getSid());
 
-        if (subscriptionHandler!=null) {
+        if (subscriptionHandler != null) {
             subscriptionHandler.send(message);
         } else {
             //TODO log this or something.

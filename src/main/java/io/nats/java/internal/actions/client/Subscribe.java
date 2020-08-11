@@ -28,10 +28,6 @@ public class Subscribe implements Action {
         this.sid = sid;
     }
 
-    public static Subscribe parse(byte[] bytes) {
-        return null;
-    }
-
     @Override
     public NATSProtocolVerb verb() {
         return NATSProtocolVerb.SUBSCRIBE;
