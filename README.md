@@ -6,9 +6,10 @@ Working on the new Java client.
 Goal is to get a basic client up and going ASAP. 
 
 Then I will add reconnect logic, 
-* TLS, 
-* mTLS, 
-* JWT, 
+* TLS 
+* mTLS 
+* JWT 
+* nonce
 
 But first the basics. The goal is a clean interface and rigourous testing. 
 
