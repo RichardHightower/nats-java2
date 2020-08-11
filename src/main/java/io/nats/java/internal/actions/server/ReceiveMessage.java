@@ -1,6 +1,7 @@
 package io.nats.java.internal.actions.server;
 
 
+import io.nats.java.Message;
 import io.nats.java.internal.Action;
 import io.nats.java.internal.NATSProtocolVerb;
 
@@ -36,11 +37,42 @@ import io.nats.java.internal.NATSProtocolVerb;
  * MSG FOO.BAR 9 INBOX.34 11\r\nHello World\r\n
  * </pr>
  */
-public class ReceiveMessage implements Action {
+public class ReceiveMessage implements Action, Message {
+    private final String subject; // subject: Subject name this message was received on
+    private final String sid; // sid: The unique alphanumeric subscription ID of the subject
+    private final String replyTo; // reply-to: The inbox subject on which the publisher is listening for responses
+    //#bytes: Size of the payload in bytes
+    private final byte[] payload; // payload: The message payload data
+
+    public ReceiveMessage(String subject, String sid, String replyTo, byte[] payload) {
+        this.subject = subject;
+        this.sid = sid;
+        this.replyTo = replyTo;
+        this.payload = payload;
+    }
+
+    public static ReceiveMessage parse(byte[] bytes) {
+        return null;
+    }
 
     @Override
     public NATSProtocolVerb verb() {
         return NATSProtocolVerb.MESSAGE;
     }
 
+    public String getSubject() {
+        return subject;
+    }
+
+    public String getSid() {
+        return sid;
+    }
+
+    public String getReplyTo() {
+        return replyTo;
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

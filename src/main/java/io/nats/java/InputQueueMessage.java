@@ -1,9 +1,9 @@
-package io.nats.java.internal;
+package io.nats.java;
 
 public interface InputQueueMessage<T> {
     boolean isError();
     boolean isPresent();
-    boolean doStop();
+    boolean isDone();
     Exception error();
     T value();
 }

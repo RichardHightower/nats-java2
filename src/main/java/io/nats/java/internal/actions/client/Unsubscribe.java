@@ -43,6 +43,10 @@ public class Unsubscribe implements Action {
         this.maxMessages = maxMessages;
     }
 
+    public static Unsubscribe parse(byte[] bytes) {
+        return null;
+    }
+
     @Override
     public NATSProtocolVerb verb() {
         return NATSProtocolVerb.UNSUBSCRIBE;

@@ -42,4 +42,11 @@ public enum ErrorType {
         this.keepConnectionOpen = keepConnectionOpen;
     }
 
+    public String getMessage() {
+        return message;
+    }
+
+    public boolean isKeepConnectionOpen() {
+        return keepConnectionOpen;
+    }
 }

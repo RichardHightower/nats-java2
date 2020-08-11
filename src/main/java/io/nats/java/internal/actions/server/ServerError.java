@@ -47,18 +47,30 @@ import io.nats.java.internal.NATSProtocolVerb;
  * -ERR 'Permissions Violation for Publish to <subject>': The user specified in the CONNECT message does not have
  * permissions to publish to the subject. <br />
  */
-public class Error implements Action {
+public class ServerError implements Action {
 
     private final String message;
     private final ErrorType errorType;
 
-    public Error(String message, ErrorType errorType) {
+    public ServerError(String message, ErrorType errorType) {
         this.message = message;
         this.errorType = errorType;
+    }
+
+    public static ServerError parse(byte[] bytes) {
+        return null;
     }
 
     @Override
     public NATSProtocolVerb verb() {
         return NATSProtocolVerb.ERROR;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public ErrorType getErrorType() {
+        return errorType;
     }
 }
