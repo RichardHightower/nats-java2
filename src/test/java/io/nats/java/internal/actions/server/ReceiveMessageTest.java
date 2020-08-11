@@ -1,7 +1,6 @@
 package io.nats.java.internal.actions.server;
 
 import org.junit.Test;
-import sun.nio.cs.UTF_8;
 
 import java.nio.charset.StandardCharsets;
 
