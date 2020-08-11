@@ -190,6 +190,8 @@ public class ClientActor {
                     handlePing();
                 case MESSAGE:
                     handleMessage(ReceiveMessage.parse(message.getBytes()));
+                case ERROR:
+                    handleError(ServerError.parse(message.getBytes()));
             }
         } else {
             switch (message.verb()) {

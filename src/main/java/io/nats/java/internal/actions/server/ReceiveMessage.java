@@ -3,7 +3,12 @@ package io.nats.java.internal.actions.server;
 
 import io.nats.java.Message;
 import io.nats.java.internal.Action;
+import io.nats.java.internal.ByteUtils;
 import io.nats.java.internal.NATSProtocolVerb;
+
+import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * ReceiveMessage <br />
@@ -52,7 +57,37 @@ public class ReceiveMessage implements Action, Message {
     }
 
     public static ReceiveMessage parse(byte[] bytes) {
-        return null;
+
+
+        if ((bytes[0] == 'M' ||  bytes[0] == 'm' )
+                && (bytes[1] == 'S' ||  bytes[1] == 's')
+                && (bytes[2] == 'G' ||  bytes[2] == 'g')) {
+
+            int [] pointer = new int[1];
+
+            final String subject = ByteUtils.readStringDelimByWhitespace(bytes, 3, pointer);
+            final String sid = ByteUtils.readStringDelimByWhitespace(bytes, pointer[0], pointer);
+            final String msgLengthOrReply = ByteUtils.readStringDelimByWhitespace(bytes, pointer[0], pointer);
+
+            if (Character.isDigit(msgLengthOrReply.charAt(0)) && bytes[pointer[0]] == '\r') {
+                int size = Integer.parseInt(msgLengthOrReply);
+                final byte[] payload = new byte[size];
+                System.arraycopy(bytes, pointer[0] + 2, payload, 0, size);
+                return new ReceiveMessage(subject, sid, null, payload);
+            } else {
+                final String strSize = ByteUtils.readStringDelimByWhitespace(bytes, pointer[0], pointer);
+                int size = Integer.parseInt(strSize);
+                final byte[] payload = new byte[size];
+                System.arraycopy(bytes, pointer[0] + 2, payload, 0, size);
+                return new ReceiveMessage(subject, sid, msgLengthOrReply, payload);
+            }
+
+        } else {
+            throw new IllegalStateException("Unable to parse byte stream");
+        }
+
+
+
     }
 
     @Override
@@ -74,5 +109,15 @@ public class ReceiveMessage implements Action, Message {
 
     public byte[] getPayload() {
         return payload;
+    }
+
+    @Override
+    public String toString() {
+        return "ReceiveMessage{" +
+                "subject='" + subject + '\'' +
+                ", sid='" + sid + '\'' +
+                ", replyTo='" + replyTo + '\'' +
+                ", payload=" + Arrays.toString(payload) +
+                '}';
     }
 }
