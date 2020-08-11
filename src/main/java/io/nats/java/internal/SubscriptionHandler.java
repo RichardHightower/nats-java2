@@ -159,8 +159,7 @@ public class SubscriptionHandler implements Subscription, OutputQueue<Message> {
     }
 
     private void preConditions() {
-        if (closed) throw new IllegalStateException("Subscription is done");
-
+        //if (closed) throw new IllegalStateException("Subscription is done");
     }
 
     private InputQueueMessage<Message> handleMessagePoll(InputQueueMessage<Message> inputQueueMessage) {
