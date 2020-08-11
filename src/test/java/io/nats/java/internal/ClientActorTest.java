@@ -205,25 +205,12 @@ public class ClientActorTest {
         final String message = String.format("MSG %s %s  %d\r\n%s\r\n", subject, sid, payLoad.length(), payLoad);
 
         serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
-            @Override
-            public boolean isError() {
-                return false;
-            }
 
             @Override
             public boolean isPresent() {
                 return true;
             }
 
-            @Override
-            public boolean isDone() {
-                return false;
-            }
-
-            @Override
-            public Exception error() {
-                return null;
-            }
 
             @Override
             public ServerMessage value() {
@@ -236,25 +223,12 @@ public class ClientActorTest {
         final String info = "INFO {\"server_id\":\"Zk0GQ3JBSrg3oyxCRRlE09\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1.10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}\r\n";
 
         serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
-            @Override
-            public boolean isError() {
-                return false;
-            }
 
             @Override
             public boolean isPresent() {
                 return true;
             }
 
-            @Override
-            public boolean isDone() {
-                return false;
-            }
-
-            @Override
-            public Exception error() {
-                return null;
-            }
 
             @Override
             public ServerMessage value() {
@@ -266,30 +240,6 @@ public class ClientActorTest {
     private InputQueueMessage<ServerMessage> getServerMessageInputQueueMessage(InputQueueMessage<ServerMessage> next) {
         if (next == null) {
             return new InputQueueMessage<ServerMessage>() {
-                @Override
-                public boolean isError() {
-                    return false;
-                }
-
-                @Override
-                public boolean isPresent() {
-                    return false;
-                }
-
-                @Override
-                public boolean isDone() {
-                    return false;
-                }
-
-                @Override
-                public Exception error() {
-                    return null;
-                }
-
-                @Override
-                public ServerMessage value() {
-                    return null;
-                }
             };
         } else {
             return next;
