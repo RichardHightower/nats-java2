@@ -228,6 +228,49 @@ public class ClientActorTest {
         stopRunner(clientActor, thread);
     }
 
+    @Test
+    public void testSubscribe() throws Exception {
+
+        final String subject = "subject1";
+
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+        sendConnectInfo();
+
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        assertTrue(action instanceof Connect);
+
+
+        assertNull(exceptionAtomicReference.get());
+
+        final Subscription subscription = clientActor.subscribe(subject);
+        final String sid = subscription.sid();
+
+
+        action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && !(action instanceof Subscribe)) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action instanceof Subscribe);
+
+        sendMessage("Hello Mom", subject, sid);
+
+        final InputQueueMessage<Message> next = subscription.next(Duration.ofSeconds(10));
+        assertTrue(next.isPresent());
+
+
+        assertEquals("Hello Mom", new String(next.value().getPayload(), StandardCharsets.UTF_8));
+
+        stopRunner(clientActor, thread);
+    }
+
     private void stopRunner(ClientActor clientActor, Thread thread) {
         clientActor.stop();
 
