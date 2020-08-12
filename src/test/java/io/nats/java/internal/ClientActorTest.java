@@ -229,7 +229,7 @@ public class ClientActorTest {
     }
 
     @Test
-    public void testSubscribe() throws Exception {
+    public void testSubscribe2() throws Exception {
 
         final String subject = "subject1";
 
