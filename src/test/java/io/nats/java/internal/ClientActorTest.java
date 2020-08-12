@@ -141,6 +141,50 @@ public class ClientActorTest {
 
     }
 
+
+    @Test
+    public void testMultipleInfoAfterConnect() throws Exception {
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+
+        sendConnectInfo();
+        Thread.sleep(100);
+        sendConnectInfo("server1");
+        Thread.sleep(100);
+        sendConnectInfo("server2");
+        Thread.sleep(100);
+        stopRunner(clientActor, thread);
+
+        //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
+
+
+        System.out.println(serverOutputChannel);
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        assertTrue(action instanceof Connect);
+
+        action = serverOutputChannel.poll();
+
+        assertTrue(action instanceof Disconnect);
+
+        action = serverOutputChannel.poll();
+
+        assertNull(action);
+
+        assertNull(exceptionAtomicReference.get());
+
+
+        stopRunner(clientActor, thread);
+        Thread.sleep(100);
+
+
+
+
+
+    }
+
     @Test
     public void testSubscribe() throws Exception {
 
@@ -220,7 +264,13 @@ public class ClientActorTest {
     }
 
     private void sendConnectInfo() {
-        final String info = "INFO {\"server_id\":\"Zk0GQ3JBSrg3oyxCRRlE09\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1.10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}\r\n";
+
+        sendConnectInfo("Zk0GQ3JBSrg3oyxCRRlE09");
+    }
+
+    private void sendConnectInfo(String server) {
+        final String info = String.format("INFO {\"server_id\":\"%s\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1." +
+                "10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}\r\n", server);
 
         serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
 
