@@ -83,7 +83,7 @@ public class ReceiveMessage implements Action, Message {
             }
 
         } else {
-            throw new IllegalStateException("Unable to parse byte stream");
+            throw new IllegalStateException("Unable to parse byte stream for message");
         }
 
 

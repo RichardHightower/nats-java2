@@ -16,6 +16,8 @@ public class ReceiveMessageTest {
         String message = "MSG 1.FOO.BAR 9 INBOX.34 11\r\nHello World\r\n";
         ReceiveMessage receiveMessage = ReceiveMessage.parse(message.getBytes(StandardCharsets.UTF_8));
 
+        System.out.println(receiveMessage);
+
         assertEquals("1.FOO.BAR", receiveMessage.getSubject());
         assertEquals("9", receiveMessage.getSid());
         assertEquals("INBOX.34", receiveMessage.getReplyTo());

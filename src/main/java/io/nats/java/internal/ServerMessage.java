@@ -16,5 +16,11 @@ public class ServerMessage implements VerbHolder{
     public NATSProtocolVerb verb() {
         return verb;
     }
-    
+
+    @Override
+    public String toString() {
+        return "ServerMessage{" +
+                "verb=" + verb +
+                '}';
+    }
 }

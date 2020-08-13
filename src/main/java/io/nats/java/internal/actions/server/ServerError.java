@@ -2,26 +2,27 @@ package io.nats.java.internal.actions.server;
 
 
 import io.nats.java.internal.Action;
+import io.nats.java.internal.ByteUtils;
 import io.nats.java.internal.NATSProtocolVerb;
 
 /**
  * Message sent from server to client. <br />
- *
+ * <p>
  * Error <br />
  * +ERR <br />
- *
+ * <p>
  * Description: <br />
-
+ * <p>
  * The -ERR message is used by the server indicate a protocol, authorization, or other runtime connection error to
  * the client. Most of these errors result in the server closing the connection.
  * Handling of these errors usually has to be done asynchronously.
- *
+ * <p>
  * Syntax
  * <pr>
  * -ERR <error message>
  * </pr>
- *
- *
+ * <p>
+ * <p>
  * Some protocol errors result in the server closing the connection. Upon receiving these errors, the connection is no
  * longer valid and the client should clean up relevant resources. These errors include: <br />
  * -ERR 'Unknown Protocol Operation': Unknown protocol error <br />
@@ -58,7 +59,21 @@ public class ServerError implements Action {
     }
 
     public static ServerError parse(byte[] bytes) {
-        return null;
+
+
+        if ((bytes[0] == '-')
+                && (bytes[1] == 'E' || bytes[1] == 'e')
+                && (bytes[2] == 'R' || bytes[2] == 'r')
+                && (bytes[3] == 'R' || bytes[3] == 'r') ) {
+
+            final String error = ByteUtils.readErrorString(bytes, 4);
+
+            // TODO actually parse error type
+            return new ServerError(error, ErrorType.InvalidSubject);
+        } else {
+            throw new IllegalStateException("Unable to parse byte stream for error");
+        }
+
     }
 
     @Override
@@ -73,4 +88,6 @@ public class ServerError implements Action {
     public ErrorType getErrorType() {
         return errorType;
     }
+
+
 }
