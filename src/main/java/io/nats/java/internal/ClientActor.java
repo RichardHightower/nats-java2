@@ -191,7 +191,9 @@ public class ClientActor {
             serverOutputChannel.send(clientActionPublish);
      }
 
-    private void handleServerMessage(final io.nats.java.internal.ServerMessage message) {
+    private void handleServerMessage(final ServerMessage message) {
+
+        System.out.println(message);
 
         if (connected) {
             switch (message.verb()) {

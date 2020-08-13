@@ -142,6 +142,40 @@ public class ClientActorTest {
     }
 
 
+
+    @Test
+    public void testError() throws Exception {
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+
+        sendConnectInfo();
+        sendError();
+        Thread.sleep(100);
+
+        stopRunner(clientActor, thread);
+        Thread.sleep(100);
+
+
+        //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
+
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        assertTrue(action instanceof Connect);
+
+        action = serverOutputChannel.poll();
+
+        assertTrue(action instanceof Disconnect);
+
+
+        assertNotNull(exceptionAtomicReference.get());
+
+
+    }
+
+
     @Test
     public void testMultipleInfoAfterConnect() throws Exception {
         final ClientActor clientActor = builder.build();
@@ -326,6 +360,27 @@ public class ClientActorTest {
             @Override
             public ServerMessage value() {
                 return new ServerMessage(info.getBytes(StandardCharsets.UTF_8), NATSProtocolVerb.INFO);
+            }
+        });
+    }
+
+
+    private void sendError() {
+        sendError("Unknown Protocol Operation");
+    }
+    private void sendError(String errorMessage) {
+        final String error = String.format("-ERR '%s'", errorMessage);
+
+        serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
+
+            @Override
+            public boolean isPresent() {
+                return true;
+            }
+
+            @Override
+            public ServerMessage value() {
+                return new ServerMessage(error.getBytes(StandardCharsets.UTF_8), NATSProtocolVerb.ERROR);
             }
         });
     }
