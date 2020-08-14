@@ -56,4 +56,12 @@ public class Unsubscribe implements Action {
     public int getMaxMessages() {
         return maxMessages;
     }
+
+    @Override
+    public String toString() {
+        return "Unsubscribe{" +
+                "sid='" + sid + '\'' +
+                ", maxMessages=" + maxMessages +
+                '}';
+    }
 }

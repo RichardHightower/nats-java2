@@ -21,8 +21,10 @@ import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TransferQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-/** Client implemented using actor model.
+/**
+ * Client implemented using actor model.
  * Input and output.
  * All methods end up being queued.
  * No thread sync logic, as main run method just polls queues.
@@ -30,25 +32,39 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ClientActor {
 
-    /** Input IO sits on the other side of this channel. */
+    /**
+     * Input IO sits on the other side of this channel.
+     */
     private final InputQueue<ServerMessage> serverInputChannel;
 
-    /** Client Actions sent with methods on this interface. */
+    /**
+     * Client Actions sent with methods on this interface.
+     */
     private final TransferQueue<Action> clientInputActions = new LinkedTransferQueue<>(); //Implement subscribe, publish, unsubscribe, etc. with this.
 
-    /** Output IO sits on the other side of this channel. */
+    /**
+     * Output IO sits on the other side of this channel.
+     */
     private final OutputQueue<Action> serverOutputChannel;
 
-    /** How long to pause/poll when there are no Server Messages in the queue. */
+    /**
+     * How long to pause/poll when there are no Server Messages in the queue.
+     */
     private final Duration pauseDuration;
 
-    /** Error handler if you are interested in such. */
+    /**
+     * Error handler if you are interested in such.
+     */
     private final ClientErrorHandler errorHandler;
 
-    /** Connection Info to send to the server after we get INFO from the server. */
+    /**
+     * Connection Info to send to the server after we get INFO from the server.
+     */
     private final Connect connectInfo;
 
-    /** Map of sid to subscription. */
+    /**
+     * Map of sid to subscription.
+     */
     private final Map<String, SubscriptionHandler> subscriptions = new HashMap<>();
 
 
@@ -56,53 +72,77 @@ public class ClientActor {
 
     private final Random random = new Random();
 
-    /** Used to generate sid. */
+    /**
+     * Logger
+     */
+    private final Logger logger;
+
+    /**
+     * Used to generate sid.
+     */
     private AtomicLong sid = new AtomicLong(random.nextLong());
 
-    /** Used to generate inbox. */
+    /**
+     * Used to generate inbox.
+     */
     private long replyInboxId = random.nextLong();
-    /** Used to generate inbox stub. */
-    private String baseReplyInboxId =  UUID.randomUUID().toString();
+    /**
+     * Used to generate inbox stub.
+     */
+    private String baseReplyInboxId = UUID.randomUUID().toString();
 
-    /** Used to implement close/stop. */
+    /**
+     * Used to implement close/stop.
+     */
     private AtomicBoolean doStop = new AtomicBoolean();
 
 
-    /** Are we connected? */
-    private boolean connected = false;
+    /**
+     * Are we connected?
+     */
+    private  boolean connected = false;
 
-    /** Server Info. */
-    private ServerInformation serverInformation;
+    /**
+     * Server Info.
+     */
+    private final AtomicReference<ServerInformation> serverInformation = new AtomicReference<>();
 
+    private final long cleanUpInterval;
 
 
     public ClientActor(final InputQueue<ServerMessage> serverInputChannel,
                        final OutputQueue<Action> serverOutputChannel,
                        final Duration pauseDuration,
                        final ClientErrorHandler errorHandler,
-                       final Connect connectInfo) {
+                       final Connect connectInfo, final Logger logger,
+                       final Duration cleanUpDuration) {
         this.serverInputChannel = serverInputChannel;
         this.pauseDuration = pauseDuration;
         this.errorHandler = errorHandler;
         this.serverOutputChannel = serverOutputChannel;
         this.connectInfo = connectInfo;
+        this.logger = logger;
+        this.cleanUpInterval = cleanUpDuration.toMillis();
     }
 
     public ServerInformation getServerInformation() {
-        return serverInformation;
+        return serverInformation.get();
     }
 
-    /** Generate next inbox for request/reply. */
+    /**
+     * Generate next inbox for request/reply.
+     */
     private String nextInbox() {
         return String.format("inbox%s-%s-%s", baseReplyInboxId, replyInboxId++);
     }
 
 
-    /** Stop the client. */
+    /**
+     * Stop the client.
+     */
     public void stop() {
         doStop.set(true);
     }
-
 
 
     public void run() {
@@ -118,7 +158,7 @@ public class ClientActor {
             while (!doStop.get()) {
 
                 boolean pause = false;
-;
+                ;
                 for (int index = 0; index < 100; index++) {
 
                     Action clientAction = clientInputActions.poll();
@@ -131,8 +171,13 @@ public class ClientActor {
                     if (next.isPresent()) {
                         handleServerMessage(next.value());
                     } else if (next.isError()) {
-                        errorHandler.handleError(next.error());
-                        lastError = next.error();
+
+                        final Exception error = next.error();
+                        if (logger.isInfo()) {
+                            logger.handleException("Got Exception from client connection or server", error);
+                        }
+                        errorHandler.handleError(error);
+                        lastError = error;
                         break loop_exit;
                     } else if (!next.isPresent()) {
                         pause = true;
@@ -143,8 +188,8 @@ public class ClientActor {
                     }
 
                 }
-                now.set( System.currentTimeMillis());
-                if ( now.get() - lastTime > 30_000) {
+                now.set(System.currentTimeMillis());
+                if (now.get() - lastTime > cleanUpInterval ) {
                     lastTime = now.get();
                     cleanup();
                 }
@@ -156,7 +201,9 @@ public class ClientActor {
             } else if (lastError != null) {
                 serverOutputChannel.send(Disconnect.DISCONNECT);
                 this.connected = false;
-                //TODO maybe log this
+                if (logger.isInfo()) {
+                    logger.handleException("There is an error and the client connection is stopping", lastError);
+                }
             }
         } catch (Exception exception) {
             serverOutputChannel.send(Disconnect.DISCONNECT);
@@ -166,7 +213,10 @@ public class ClientActor {
     }
 
     private void cleanup() {
-        //TODO cleanup old subscriptions
+
+        if (logger.isVerbose()) {
+            logger.verbose("Cleaning up subscriptions");
+        }
     }
 
     private void handleClientAction(Action clientAction) {
@@ -183,17 +233,28 @@ public class ClientActor {
                     break;
             }
         } else {
-            //TODO warn.. subscribe or unsubscribe called before connecting.
+
+            switch (clientAction.verb()) {
+                case SUBSCRIBE:
+                case UNSUBSCRIBE:
+                    if (logger.isInfo()) {
+                        logger.info(String.format("%s called but the client is not connected to the NATS server", clientAction.verb()));
+                    }
+            }
+
         }
     }
 
     private void handlePublish(final Publish clientActionPublish) {
-            serverOutputChannel.send(clientActionPublish);
-     }
+        serverOutputChannel.send(clientActionPublish);
+    }
 
     private void handleServerMessage(final ServerMessage message) {
 
-        System.out.println(message);
+
+        if (logger.isVerbose()) {
+            logger.verbose(String.format("Message received from server %s", message));
+        }
 
         if (connected) {
             switch (message.verb()) {
@@ -242,25 +303,24 @@ public class ClientActor {
     }
 
     private void handleMessage(final ReceiveMessage message) {
-
         final SubscriptionHandler subscriptionHandler = subscriptions.get(message.getSid());
-
         if (subscriptionHandler != null) {
             subscriptionHandler.send(message);
         } else {
-            //TODO log this or something.
+            if (logger.isInfo()) {
+                logger.info(String.format("Received a message from the server that we do not have a subscription for %s", message));
+            }
         }
-
     }
 
     private void handleUnsubscribe(final Unsubscribe unsubscribe) {
         final SubscriptionHandler subscriptionHandler = subscriptions.get(unsubscribe.getSid());
-
         if (subscriptionHandler != null) {
             subscriptionHandler.unsubscribe(unsubscribe.getMaxMessages());
             serverOutputChannel.send(unsubscribe);
         } else {
-            //TODO log this;
+            if (logger.isInfo())
+                logger.info(String.format("Got an unsubscribe message for a non existent subscription %s", unsubscribe));
         }
 
     }
@@ -271,23 +331,24 @@ public class ClientActor {
     }
 
     private void handleServerInfo(ServerInformation newInfo) {
-        if (this.serverInformation != null) {
-            this.serverInformation = this.serverInformation.merge(newInfo);
+        if (this.serverInformation.get() != null) {
+            this.serverInformation.set(this.serverInformation.get().merge(newInfo));
         } else {
-            this.serverInformation = newInfo;
+            this.serverInformation.set(newInfo);
         }
     }
 
     private void handlePing() {
+        if (logger.isVerbose()) logger.verbose("Got Ping from NATS server");
         serverOutputChannel.send(PingPong.PONG);
     }
 
     private void handleOk() {
-
+        if (logger.isInfo()) logger.info("Got OK from NATS server");
     }
 
     private void handleServerConnectInfo(final ServerInformation newServerInfo) {
-        serverInformation = newServerInfo;
+        serverInformation.set(newServerInfo);
         this.connected = true;
         serverOutputChannel.send(connectInfo);
     }
@@ -295,15 +356,15 @@ public class ClientActor {
     /**
      * Send a message to the specified subject. The message body <strong>will
      * not</strong> be copied.
-     *
-     *
+     * <p>
+     * <p>
      * where the sender creates a byte array immediately before calling publish.
-     *
+     * <p>
      * See {@link #publish(String, String, byte[]) publish()} for more details on
      * publish during reconnect.
      *
      * @param subject the subject to send the message to
-     * @param body the message body
+     * @param body    the message body
      */
     public void publish(String subject, byte[] body) {
         this.publish(subject, null, body);
@@ -314,7 +375,7 @@ public class ClientActor {
      * response comes back.
      *
      * @param subject the subject for the service that will handle the request
-     * @param data the content of the message
+     * @param data    the content of the message
      * @return a Subscription for the response.
      */
     public Subscription request(String subject, byte[] data) {
@@ -328,7 +389,7 @@ public class ClientActor {
     /**
      * Send a request to the specified subject, providing a replyTo subject. The
      * message body <strong>will not</strong> be copied.
-     *
+     * <p>
      * where the sender creates a byte array immediately before calling publish.
      * <p>
      * During reconnect the client will try to buffer messages. The buffer size is set
@@ -337,9 +398,10 @@ public class ClientActor {
      * If the buffer is exceeded an IllegalStateException is thrown. Applications should use
      * this exception as a signal to wait for reconnect before continuing.
      * </p>
+     *
      * @param subject the subject to send the message to
      * @param replyTo the subject the receiver should send the response to
-     * @param body the message body
+     * @param body    the message body
      */
     public void publish(String subject, String replyTo, byte[] body) {
         clientInputActions.add(new Publish(subject, replyTo, body));
@@ -361,9 +423,7 @@ public class ClientActor {
      * <p>Use the {@link Subscription#next(Duration) nextMessage} method to read
      * messages for this subscription.
      *
-     *
-     *
-     * @param subject the subject to subscribe to
+     * @param subject    the subject to subscribe to
      * @param queueGroup the queue group to join
      * @return an object representing the subscription
      */
