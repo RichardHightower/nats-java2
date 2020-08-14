@@ -5,10 +5,8 @@ import io.nats.java.InputQueueMessage;
 import io.nats.java.Message;
 import io.nats.java.Subscription;
 import io.nats.java.internal.actions.OutputQueue;
-import io.nats.java.internal.actions.client.Connect;
-import io.nats.java.internal.actions.client.ConnectBuilder;
-import io.nats.java.internal.actions.client.Disconnect;
-import io.nats.java.internal.actions.client.Subscribe;
+import io.nats.java.internal.actions.PingPong;
+import io.nats.java.internal.actions.client.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,10 +28,11 @@ public class ClientActorTest {
 
 
     @After
-    public void after() {
+    public void after() throws Exception {
         serverInputChannel.clear();
         serverOutputChannel.clear();
         exceptionAtomicReference.set(null);
+        Thread.sleep(1000);
     }
 
     @Before
@@ -263,44 +262,143 @@ public class ClientActorTest {
     }
 
     @Test
-    public void testSubscribe2() throws Exception {
+    public void testPing() throws Exception {
 
-        final String subject = "subject1";
 
         final ClientActor clientActor = builder.build();
 
         Thread thread = createRunner(clientActor);
 
         sendConnectInfo();
+        Thread.sleep(100);
+        sendPing();
+        Thread.sleep(100);
 
+        System.out.println(serverOutputChannel);
 
         Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
 
-        assertTrue(action instanceof Connect);
-
-
-        assertNull(exceptionAtomicReference.get());
-
-        final Subscription subscription = clientActor.subscribe(subject);
-        final String sid = subscription.sid();
-
-
-        action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
-
-        while (action != null && !(action instanceof Subscribe)) {
+        while (action != null && action.verb() != NATSProtocolVerb.PONG) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
         }
 
         assertNotNull(action);
-        assertTrue(action instanceof Subscribe);
+        assertTrue(action.verb() == NATSProtocolVerb.PONG);
 
-        sendMessage("Hello Mom", subject, sid);
 
-        final InputQueueMessage<Message> next = subscription.next(Duration.ofSeconds(10));
+        stopRunner(clientActor, thread);
+    }
+
+    @Test
+    public void testPublish() throws Exception {
+
+
+        final ClientActor clientActor = builder.build();
+
+
+
+        Thread thread = createRunner(clientActor);
+
+        sendConnectInfo();
+        Thread.sleep(100);
+        clientActor.publish("subject", "hello".getBytes(StandardCharsets.UTF_8));
+        Thread.sleep(100);
+
+        System.out.println(serverOutputChannel);
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action.verb() == NATSProtocolVerb.PUBLISH);
+
+
+        stopRunner(clientActor, thread);
+    }
+
+
+    @Test
+    public void testPublishBeforeConnected() throws Exception {
+
+
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+        clientActor.publish("subject", "hello".getBytes(StandardCharsets.UTF_8));
+
+        sendConnectInfo();
+        Thread.sleep(100);
+
+
+        System.out.println(serverOutputChannel);
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action.verb() == NATSProtocolVerb.PUBLISH);
+
+
+        stopRunner(clientActor, thread);
+    }
+
+
+
+    @Test
+    public void testPublishWithReply() throws Exception {
+
+
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+        sendConnectInfo();
+        Thread.sleep(100);
+
+
+        clientActor.publish("subject1", "subject2", "hello".getBytes(StandardCharsets.UTF_8));
+
+        final Subscription subscription = clientActor.subscribe("subject2");
+
+
+        System.out.println(serverOutputChannel);
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action.verb() == NATSProtocolVerb.PUBLISH);
+
+
+        final Publish publish = (Publish) action;
+        sendMessage(new String(publish.getPayload(), StandardCharsets.UTF_8) + " world",
+                publish.getReplyTo(), subscription.sid());
+
+        Thread.sleep(100);
+
+        InputQueueMessage<Message> next = subscription.next(Duration.ofSeconds(10));
+
+        assertFalse(next.isError());
         assertTrue(next.isPresent());
+        Message message = next.value();
+        assertNotNull(message);
+        byte[] payload = message.getPayload();
+        String subject = message.getSubject();
+        String replyTo = message.getReplyTo();
 
+        assertNull(replyTo);
+        assertEquals("subject2", subject);
+        assertEquals("hello world", new String(payload, StandardCharsets.UTF_8));
 
-        assertEquals("Hello Mom", new String(next.value().getPayload(), StandardCharsets.UTF_8));
 
         stopRunner(clientActor, thread);
     }
@@ -344,6 +442,25 @@ public class ClientActorTest {
 
         sendConnectInfo("Zk0GQ3JBSrg3oyxCRRlE09");
     }
+
+    private void sendPing() {
+        final String ping = "PING\r\n";
+
+        serverInputChannel.add(new InputQueueMessage<ServerMessage>() {
+
+            @Override
+            public boolean isPresent() {
+                return true;
+            }
+
+            @Override
+            public ServerMessage value() {
+                return new ServerMessage(ping.getBytes(StandardCharsets.UTF_8), NATSProtocolVerb.PING);
+            }
+        });
+    }
+
+
 
     private void sendConnectInfo(String server) {
         final String info = String.format("INFO {\"server_id\":\"%s\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1." +

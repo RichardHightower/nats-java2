@@ -158,13 +158,15 @@ public class ClientActor {
             while (!doStop.get()) {
 
                 boolean pause = false;
-                ;
+
                 for (int index = 0; index < 100; index++) {
 
-                    Action clientAction = clientInputActions.poll();
-                    while (clientAction != null) {
-                        handleClientAction(clientAction);
-                        clientAction = clientInputActions.poll();
+                    if (connected) {
+                        Action clientAction = clientInputActions.poll();
+                        while (clientAction != null) {
+                            handleClientAction(clientAction);
+                            clientAction = clientInputActions.poll();
+                        }
                     }
 
                     final InputQueueMessage<ServerMessage> next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
