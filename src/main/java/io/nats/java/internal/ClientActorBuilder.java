@@ -34,8 +34,32 @@ public class ClientActorBuilder {
      */
     private Connect connectInfo;
 
+    /**
+     * Internal setting for checking for expired subscriptions and such.
+     * Defaults to 30 seconds.
+     */
+    private Duration cleanupDuration = Duration.ofSeconds(30);
+
+
+    /**
+     *
+     */
+    private Logger logger;
+
+    private boolean verbose;
+    private boolean info;
+
     public InputQueue<ServerMessage> getServerInputChannel() {
         return serverInputChannel;
+    }
+
+    public Duration getCleanupDuration() {
+        return cleanupDuration;
+    }
+
+    public ClientActorBuilder withCleanupDuration(Duration cleanupDuration) {
+        this.cleanupDuration = cleanupDuration;
+        return this;
     }
 
     public ClientActorBuilder withServerInputChannel(InputQueue<ServerMessage> serverInputChannel) {
@@ -79,10 +103,92 @@ public class ClientActorBuilder {
         return this;
     }
 
+    public ClientActorBuilder withLogger(final Logger logger) {
+        this.logger = logger;
+        return this;
+    }
+
+    public Logger getLogger() {
+
+        if (logger == null) {
+            if (info && verbose) {
+                return new Logger() {
+                    @Override
+                    public boolean isVerbose() {
+                        return true;
+                    }
+
+                    @Override
+                    public void verbose(String string) {
+                        System.out.println(string);
+                    }
+
+                    @Override
+                    public void handleException(String string, Exception exception) {
+                        System.out.println(string);
+                        exception.printStackTrace();
+                    }
+
+                    @Override
+                    public boolean isInfo() {
+                        return true;
+                    }
+
+                    @Override
+                    public void info(String string) {
+                        System.out.println(string);
+                    }
+                };
+            } else if (verbose) {
+                return new Logger() {
+                    @Override
+                    public boolean isVerbose() {
+                        return true;
+                    }
+
+                    @Override
+                    public void verbose(String string) {
+                        System.out.println(string);
+                    }
+
+                    @Override
+                    public void handleException(String string, Exception exception) {
+                        System.out.println(string);
+                        exception.printStackTrace();
+                    }
+                };
+            } else {
+                return new Logger() {
+                };
+            }
+        }
+
+        return logger;
+    }
+
+
     public ClientActor build() {
         return new ClientActor(this.getServerInputChannel(), this.getServerOutputChannel(), this.getPauseDuration(),
                 this.getErrorHandler(),
-                this.getConnectInfo());
+                this.getConnectInfo(), this.getLogger(), this.getCleanupDuration());
+    }
+
+    public boolean isVerbose() {
+        return verbose;
+    }
+
+    public ClientActorBuilder verbose() {
+        this.verbose = true;
+        return this;
+    }
+
+    public boolean isInfo() {
+        return info;
+    }
+
+    public ClientActorBuilder logInfo() {
+        this.info = true;
+        return this;
     }
 
     public static ClientActorBuilder builder() {
