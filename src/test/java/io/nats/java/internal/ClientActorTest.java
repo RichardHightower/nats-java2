@@ -60,30 +60,7 @@ public class ClientActorTest {
                     return getServerMessageInputQueueMessage(next);
                 } catch (InterruptedException e) {
                     return new InputQueueMessage<ServerMessage>() {
-                        @Override
-                        public boolean isError() {
-                            return false;
-                        }
 
-                        @Override
-                        public boolean isPresent() {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isDone() {
-                            return false;
-                        }
-
-                        @Override
-                        public Exception error() {
-                            return null;
-                        }
-
-                        @Override
-                        public ServerMessage value() {
-                            return null;
-                        }
                     };
 
                 }
@@ -366,6 +343,8 @@ public class ClientActorTest {
 
         final Subscription subscription = clientActor.subscribe("subject2");
 
+        Thread.sleep(100);
+
 
         System.out.println(serverOutputChannel);
 
@@ -397,6 +376,58 @@ public class ClientActorTest {
 
         assertNull(replyTo);
         assertEquals("subject2", subject);
+        assertEquals("hello world", new String(payload, StandardCharsets.UTF_8));
+
+
+        stopRunner(clientActor, thread);
+    }
+
+
+
+    @Test
+    public void requestReply() throws Exception {
+
+
+        final ClientActor clientActor = builder.build();
+
+        Thread thread = createRunner(clientActor);
+
+        sendConnectInfo();
+
+        final Subscription subscription = clientActor.request("subject1",  "hello".getBytes(StandardCharsets.UTF_8));
+
+
+        Thread.sleep(100);
+
+
+        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+
+        while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
+            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        }
+
+        assertNotNull(action);
+        assertTrue(action.verb() == NATSProtocolVerb.PUBLISH);
+
+
+        final Publish publish = (Publish) action;
+        sendMessage(new String(publish.getPayload(), StandardCharsets.UTF_8) + " world",
+                subscription.subject(), subscription.sid());
+
+        Thread.sleep(100);
+
+        InputQueueMessage<Message> next = subscription.next(Duration.ofSeconds(10));
+
+        assertFalse(next.isError());
+        assertTrue(next.isPresent());
+        Message message = next.value();
+        assertNotNull(message);
+        final byte[] payload = message.getPayload();
+        final String subject = message.getSubject();
+        final String replyTo = message.getReplyTo();
+
+        assertNull(replyTo);
+        assertEquals(subscription.subject(), subject);
         assertEquals("hello world", new String(payload, StandardCharsets.UTF_8));
 
 

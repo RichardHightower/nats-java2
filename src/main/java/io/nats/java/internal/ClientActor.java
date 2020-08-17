@@ -132,8 +132,8 @@ public class ClientActor {
     /**
      * Generate next inbox for request/reply.
      */
-    private String nextInbox() {
-        return String.format("inbox%s-%s-%s", baseReplyInboxId, replyInboxId++);
+    private String nextInbox(final String requestSubject) {
+        return String.format("inbox%s-%s-%s", requestSubject, baseReplyInboxId, replyInboxId++);
     }
 
 
@@ -381,8 +381,8 @@ public class ClientActor {
      * @return a Subscription for the response.
      */
     public Subscription request(String subject, byte[] data) {
-        final String replyTo = this.nextInbox();
-        final Subscription subscription = subscribe(subject);
+        final String replyTo = this.nextInbox(subject);
+        final Subscription subscription = subscribe(replyTo);
         clientInputActions.add(new Unsubscribe(subscription.sid(), 1));
         this.publish(subject, replyTo, data);
         return subscription;
