@@ -32,7 +32,7 @@ public class ClientActorTest {
         serverInputChannel.clear();
         serverOutputChannel.clear();
         exceptionAtomicReference.set(null);
-        Thread.sleep(1000);
+        Thread.sleep(100);
     }
 
     @Before
@@ -103,7 +103,7 @@ public class ClientActorTest {
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
@@ -137,7 +137,7 @@ public class ClientActorTest {
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
@@ -171,7 +171,7 @@ public class ClientActorTest {
 
 
         System.out.println(serverOutputChannel);
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
@@ -207,7 +207,7 @@ public class ClientActorTest {
         sendConnectInfo();
 
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         assertTrue(action instanceof Connect);
 
@@ -218,7 +218,7 @@ public class ClientActorTest {
         final String sid = subscription.sid();
 
 
-        action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && !(action instanceof Subscribe)) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
@@ -253,7 +253,7 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && action.verb() != NATSProtocolVerb.PONG) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
@@ -283,7 +283,7 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
@@ -312,7 +312,7 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
@@ -348,7 +348,7 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
@@ -400,7 +400,7 @@ public class ClientActorTest {
         Thread.sleep(100);
 
 
-        Action action = serverOutputChannel.poll(10, TimeUnit.SECONDS);
+        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
             action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
