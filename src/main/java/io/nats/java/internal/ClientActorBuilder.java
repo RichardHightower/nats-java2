@@ -2,16 +2,23 @@ package io.nats.java.internal;
 
 import io.nats.java.ClientErrorHandler;
 import io.nats.java.InputQueue;
+import io.nats.java.internal.actions.ActionQueue;
+import io.nats.java.internal.actions.ActionQueueImpl;
 import io.nats.java.internal.actions.OutputQueue;
 import io.nats.java.internal.actions.client.Connect;
 
 import java.time.Duration;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.TransferQueue;
 
 public class ClientActorBuilder {
     /**
      * Input IO sits on the other side of this channel.
      */
     private InputQueue<ServerMessage> serverInputChannel;
+
+
+    private ActionQueue clientInputActions;
 
 
     /**
@@ -56,6 +63,22 @@ public class ClientActorBuilder {
     public Duration getCleanupDuration() {
         return cleanupDuration;
     }
+
+
+    public ActionQueue getClientInputActions() {
+
+        if (clientInputActions == null) {
+            TransferQueue<Action> actionQueue = new LinkedTransferQueue<>();
+            this.clientInputActions = new ActionQueueImpl(actionQueue);
+        }
+        return clientInputActions;
+    }
+
+    public ClientActorBuilder withClientInputActions(ActionQueue clientInputActions) {
+        this.clientInputActions = clientInputActions;
+        return this;
+    }
+
 
     public ClientActorBuilder withCleanupDuration(Duration cleanupDuration) {
         this.cleanupDuration = cleanupDuration;
@@ -170,7 +193,7 @@ public class ClientActorBuilder {
     public ClientActor build() {
         return new ClientActor(this.getServerInputChannel(), this.getServerOutputChannel(), this.getPauseDuration(),
                 this.getErrorHandler(),
-                this.getConnectInfo(), this.getLogger(), this.getCleanupDuration());
+                this.getConnectInfo(), this.getLogger(), this.getCleanupDuration(), getClientInputActions());
     }
 
     public boolean isVerbose() {

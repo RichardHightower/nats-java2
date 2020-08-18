@@ -4,6 +4,9 @@ import java.nio.charset.StandardCharsets;
 
 public class ByteUtils {
 
+    private static final int CR = '\r';
+    private static final int NL = '\n';
+
     public static int skipUntilEndQuote(byte[] bytes, int start) {
 
         for (int index = start; index < bytes.length; index++) {
@@ -32,6 +35,34 @@ public class ByteUtils {
 
         return start;
     }
+
+    public static int skipUntilCRLF(byte[] buffer, int start) {
+
+        boolean foundCR = false;
+        int position = -1;
+
+        loop:
+        for (int index = start; index < buffer.length; index++) {
+
+            switch (buffer[index]) {
+                case CR:
+                    foundCR = true;
+                    break;
+                case NL:
+                    if (foundCR) {
+                        position = index +1;
+                        break loop;
+                    }
+                    break;
+                default:
+                    foundCR = false;
+            }
+        }
+
+        return position;
+
+    }
+
 
     public static int skipWhiteSpaceAndFirstQuote(byte[] bytes, int start) {
         byte b = -1;

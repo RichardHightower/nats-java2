@@ -5,7 +5,7 @@ import io.nats.java.InputQueueMessage;
 import io.nats.java.Message;
 import io.nats.java.Subscription;
 import io.nats.java.internal.actions.OutputQueue;
-import io.nats.java.internal.actions.PingPong;
+
 import io.nats.java.internal.actions.client.*;
 import org.junit.After;
 import org.junit.Before;
@@ -103,7 +103,7 @@ public class ClientActorTest {
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         assertTrue(action instanceof Connect);
 
@@ -117,6 +117,9 @@ public class ClientActorTest {
 
     }
 
+    private Action nextAction() throws InterruptedException {
+        return serverOutputChannel.poll(50, TimeUnit.MILLISECONDS);
+    }
 
 
     @Test
@@ -137,7 +140,7 @@ public class ClientActorTest {
         //assertEquals("Zk0GQ3JBSrg3oyxCRRlE09", clientActor.getServerInformation().getServerId());
 
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         assertTrue(action instanceof Connect);
 
@@ -160,9 +163,7 @@ public class ClientActorTest {
 
 
         sendConnectInfo();
-        Thread.sleep(100);
         sendConnectInfo("server1");
-        Thread.sleep(100);
         sendConnectInfo("server2");
         Thread.sleep(100);
         stopRunner(clientActor, thread);
@@ -171,7 +172,7 @@ public class ClientActorTest {
 
 
         System.out.println(serverOutputChannel);
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         assertTrue(action instanceof Connect);
 
@@ -187,12 +188,6 @@ public class ClientActorTest {
 
 
         stopRunner(clientActor, thread);
-        Thread.sleep(100);
-
-
-
-
-
     }
 
     @Test
@@ -207,7 +202,7 @@ public class ClientActorTest {
         sendConnectInfo();
 
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         assertTrue(action instanceof Connect);
 
@@ -247,16 +242,13 @@ public class ClientActorTest {
         Thread thread = createRunner(clientActor);
 
         sendConnectInfo();
-        Thread.sleep(100);
         sendPing();
-        Thread.sleep(100);
-
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         while (action != null && action.verb() != NATSProtocolVerb.PONG) {
-            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+            action = nextAction();
         }
 
         assertNotNull(action);
@@ -283,10 +275,10 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
-            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+            action = nextAction();
         }
 
         assertNotNull(action);
@@ -312,10 +304,10 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
-            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+            action = nextAction();
         }
 
         assertNotNull(action);
@@ -348,10 +340,10 @@ public class ClientActorTest {
 
         System.out.println(serverOutputChannel);
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
-            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+            action = nextAction();
         }
 
         assertNotNull(action);
@@ -400,10 +392,10 @@ public class ClientActorTest {
         Thread.sleep(100);
 
 
-        Action action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+        Action action = nextAction();
 
         while (action != null && action.verb() != NATSProtocolVerb.PUBLISH) {
-            action = serverOutputChannel.poll(1, TimeUnit.SECONDS);
+            action = nextAction();
         }
 
         assertNotNull(action);
@@ -469,7 +461,7 @@ public class ClientActorTest {
         });
     }
 
-    private void sendConnectInfo() {
+    private void sendConnectInfo() throws Exception{
 
         sendConnectInfo("Zk0GQ3JBSrg3oyxCRRlE09");
     }
@@ -493,7 +485,7 @@ public class ClientActorTest {
 
 
 
-    private void sendConnectInfo(String server) {
+    private void sendConnectInfo(String server) throws Exception{
         final String info = String.format("INFO {\"server_id\":\"%s\",\"version\":\"1.2.0\",\"proto\":1,\"go\":\"go1." +
                 "10.3\",\"host\":\"0.0.0.0\",\"port\":4222,\"max_payload\":1048576,\"client_id\":2392}\r\n", server);
 
@@ -510,6 +502,7 @@ public class ClientActorTest {
                 return new ServerMessage(info.getBytes(StandardCharsets.UTF_8), NATSProtocolVerb.INFO);
             }
         });
+
     }
 
 
