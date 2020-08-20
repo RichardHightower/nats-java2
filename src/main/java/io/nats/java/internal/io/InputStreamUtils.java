@@ -1,4 +1,4 @@
-package io.nats.java.internal.actions;
+package io.nats.java.internal.io;
 
 import java.io.IOException;
 import java.io.InputStream;

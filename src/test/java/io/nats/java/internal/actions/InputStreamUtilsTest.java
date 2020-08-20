@@ -1,6 +1,7 @@
 package io.nats.java.internal.actions;
 
 import io.nats.java.internal.ByteUtils;
+import io.nats.java.internal.io.InputStreamUtils;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
