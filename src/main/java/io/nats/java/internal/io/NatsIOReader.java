@@ -105,27 +105,72 @@ public class NatsIOReader {
         int size = ByteUtils.readSizeFromMsgAndValidate(buffer, locationIndex, highWaterMark, indexes, numFeatures);
         int index = locationIndex[0];
 
-        if (highWaterMark - index < size) {
-            if (buffer.length - index < size) {
-                final ByteBuffer byteBuffer = ByteBuffer.allocate((index - startOfBuffer) + 2 + size);
-                byteBuffer.put(buffer, startOfBuffer, index - startOfBuffer);
-                int bytesRead;
-                do  {
-                    bytesRead = inputStream.read(buffer);
-                    if (bytesRead > 0) {
-                        byteBuffer.put(buffer, 0, bytesRead);
-                    }
-                }while (bytesRead != -1 && bytesRead != 0);
-                byte[] b = new byte[byteBuffer.remaining()];
-                byteBuffer.get(b);
-                final ServerMessage serverMessage = new ServerMessage(b, NATSProtocolVerb.MESSAGE, indexes, numFeatures[0]);
+        ServerMessage serverMessage = null;
+
+        int protocolSize = index - startOfBuffer + 2;
+        int totalSizeWithMsg = protocolSize + size;
+        //int availableSpaceInBuffer = highWaterMark - (startOfBuffer + protocolSize);
+
+        //Wont fit into buffer.
+        if (buffer.length - index < size) {
+            serverMessage = getServerMessage(indexes, numFeatures[0], totalSizeWithMsg, protocolSize);
+
+            //Will fit into buffer but we have not read in enough.
+        } else if (totalSizeWithMsg - (protocolSize + startOfBuffer) > size) {
+            int bytesRead;
+            do {
+                bytesRead = inputStream.read(buffer);
+                if (bytesRead > 0) {
+                    index += bytesRead;
+                }
+            } while (bytesRead != -1 && bytesRead != 0);
+
+
+            byte b[] = new byte[totalSizeWithMsg];
+            System.arraycopy(buffer, startOfBuffer, b, 0, totalSizeWithMsg);
+            serverMessage = new ServerMessage(b, NATSProtocolVerb.MESSAGE, indexes, numFeatures[0]);
+
+        } else {
+            //We already read the whole thing.
+            byte b[] = new byte[totalSizeWithMsg];
+            System.arraycopy(buffer, startOfBuffer, b, 0, totalSizeWithMsg);
+            serverMessage = new ServerMessage(b, NATSProtocolVerb.MESSAGE, indexes, numFeatures[0]);
+
+            final int end = startOfBuffer + totalSizeWithMsg;
+
+            //We read in the whole message and none of the next message.
+            if (buffer[end-1] == '\n' && buffer[end-2] == '\r') {
+                startOfBuffer = 0;
             } else {
-
-
+                //We read in some of the next message.
+                startOfBuffer = end;
             }
+
         }
 
+        System.out.println(serverMessage);
+        // TODO left off here
 
+    }
+
+    private ServerMessage getServerMessage(int[] indexes, int numFeature, int totalSizeWithMsg, int protocolSize) throws IOException {
+
+
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(totalSizeWithMsg);
+        ServerMessage serverMessage;
+
+        byteBuffer.put(buffer, startOfBuffer, protocolSize);
+        int bytesRead;
+        do {
+            bytesRead = inputStream.read(buffer);
+            if (bytesRead > 0) {
+                byteBuffer.put(buffer, 0, bytesRead);
+            }
+        } while (bytesRead != -1 && bytesRead != 0);
+        byte[] b = new byte[byteBuffer.remaining()];
+        byteBuffer.get(b);
+        serverMessage = new ServerMessage(b, NATSProtocolVerb.MESSAGE, indexes, numFeature);
+        return serverMessage;
     }
 
     private void processInfo() throws IOException {
