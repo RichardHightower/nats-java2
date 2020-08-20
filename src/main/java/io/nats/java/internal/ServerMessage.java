@@ -1,20 +1,93 @@
 package io.nats.java.internal;
 
-public class ServerMessage implements VerbHolder{
+import java.nio.charset.StandardCharsets;
+
+public class ServerMessage implements VerbHolder {
     private final byte[] bytes;
     private final NATSProtocolVerb verb;
+
+    private final int[] indexes;
+    private final int args;
+
+    public ServerMessage(byte[] bytes, NATSProtocolVerb verb, int[] indexes, int args) {
+        this.bytes = bytes;
+        this.verb = verb;
+        this.indexes = indexes;
+        this.args = args;
+    }
 
     public ServerMessage(byte[] bytes, NATSProtocolVerb verb) {
         this.bytes = bytes;
         this.verb = verb;
+        this.indexes = null;
+        this.args = -1;
     }
+
 
     public byte[] getBytes() {
         return bytes;
     }
 
+    public int getArgs() {
+        return args;
+    }
+
     public NATSProtocolVerb verb() {
         return verb;
+    }
+
+
+    public String firstArgAsString() {
+        int start = indexes[0];
+        int end = indexes[1];
+        return getString(start, end);
+    }
+
+    public String secondArgAsString() {
+        int start = indexes[2];
+        int end = indexes[3];
+        return getString(start, end);
+    }
+
+    public String thirdArgAsString() {
+        int start = indexes[4];
+        int end = indexes[5];
+        return getString(start, end);
+    }
+
+    public String fourthArgAsString() {
+        int start = indexes[6];
+        int end = indexes[7];
+        return getString(start, end);
+    }
+
+    public String fifthArgAsString() {
+        int start = indexes[8];
+        int end = indexes[9];
+        return getString(start, end);
+    }
+
+    public byte[] fourthArgAsBytes() {
+        int start = indexes[6];
+        int end = indexes[7];
+        return getBytes(start, end);
+    }
+
+    public byte[] fifthArgAsBytes() {
+        int start = indexes[8];
+        int end = indexes[9];
+        return getBytes(start, end);
+    }
+
+    private String getString(int start, int end) {
+        return new String(bytes, start, end - start, StandardCharsets.UTF_8).intern();
+    }
+
+    private byte[] getBytes(int start, int end) {
+        final int length = end - start;
+        final byte[] bytes = new byte[length];
+        System.arraycopy(this.bytes, start, bytes, 0, length);
+        return bytes;
     }
 
     @Override

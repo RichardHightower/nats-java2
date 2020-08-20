@@ -1,9 +1,7 @@
 package io.nats.java.internal;
 
-import io.nats.java.ClientErrorHandler;
-import io.nats.java.InputQueue;
-import io.nats.java.InputQueueMessage;
-import io.nats.java.Subscription;
+import io.nats.java.*;
+import io.nats.java.internal.actions.ActionQueue;
 import io.nats.java.internal.actions.OutputQueue;
 import io.nats.java.internal.actions.PingPong;
 import io.nats.java.internal.actions.ServerErrorException;
@@ -13,12 +11,8 @@ import io.nats.java.internal.actions.server.ServerError;
 import io.nats.java.internal.actions.server.ServerInformation;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.TransferQueue;
+import java.util.*;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * No thread sync logic, as main run method just polls queues.
  * Order of operations guaranteed.
  */
-public class ClientActor {
+public class ClientActor implements Connection {
 
     /**
      * Input IO sits on the other side of this channel.
@@ -40,7 +34,7 @@ public class ClientActor {
     /**
      * Client Actions sent with methods on this interface.
      */
-    private final TransferQueue<Action> clientInputActions = new LinkedTransferQueue<>(); //Implement subscribe, publish, unsubscribe, etc. with this.
+    private final ActionQueue clientInputActions; //Implement subscribe, publish, unsubscribe, etc. with this.
 
     /**
      * Output IO sits on the other side of this channel.
@@ -96,11 +90,13 @@ public class ClientActor {
      */
     private AtomicBoolean doStop = new AtomicBoolean();
 
+    private AtomicReference<ConnectionStatus> connectionStatus = new AtomicReference<>(ConnectionStatus.CONNECTING);
+
 
     /**
      * Are we connected?
      */
-    private  boolean connected = false;
+    private boolean connected = false;
 
     /**
      * Server Info.
@@ -115,8 +111,10 @@ public class ClientActor {
                        final Duration pauseDuration,
                        final ClientErrorHandler errorHandler,
                        final Connect connectInfo, final Logger logger,
-                       final Duration cleanUpDuration) {
+                       final Duration cleanUpDuration,
+                       final ActionQueue clientInputActions) {
         this.serverInputChannel = serverInputChannel;
+        this.clientInputActions = clientInputActions;
         this.pauseDuration = pauseDuration;
         this.errorHandler = errorHandler;
         this.serverOutputChannel = serverOutputChannel;
@@ -132,8 +130,8 @@ public class ClientActor {
     /**
      * Generate next inbox for request/reply.
      */
-    private String nextInbox() {
-        return String.format("inbox%s-%s-%s", baseReplyInboxId, replyInboxId++);
+    private String nextInbox(final String requestSubject) {
+        return String.format("inbox%s-%s-%s", requestSubject, baseReplyInboxId, replyInboxId++);
     }
 
 
@@ -152,57 +150,56 @@ public class ClientActor {
             long startTime = System.currentTimeMillis();
             long lastTime = startTime;
             Exception lastError = null;
+            boolean pause = false;
 
-
-            loop_exit:
             while (!doStop.get()) {
 
-                boolean pause = false;
-
-                for (int index = 0; index < 100; index++) {
-
-                    if (connected) {
-                        Action clientAction = clientInputActions.poll();
-                        while (clientAction != null) {
-                            handleClientAction(clientAction);
-                            clientAction = clientInputActions.poll();
-                        }
+                if (connected) {
+                    Action clientAction = clientInputActions.poll();
+                    while (clientAction != null) {
+                        handleClientAction(clientAction);
+                        clientAction = clientInputActions.poll();
                     }
+                }
 
-                    final InputQueueMessage<ServerMessage> next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
-                    if (next.isPresent()) {
-                        handleServerMessage(next.value());
-                    } else if (next.isError()) {
+                InputQueueMessage<ServerMessage> next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
 
-                        final Exception error = next.error();
-                        if (logger.isInfo()) {
-                            logger.handleException("Got Exception from client connection or server", error);
-                        }
-                        errorHandler.handleError(error);
-                        lastError = error;
-                        break loop_exit;
-                    } else if (!next.isPresent()) {
-                        pause = true;
-                    } else if (next.isDone()) {
-                        break loop_exit;
-                    } else {
-                        pause = false;
+                while (next.isPresent()) {
+                    handleServerMessage(next.value());
+                    next = !pause ? serverInputChannel.next() : serverInputChannel.next(pauseDuration);
+                }
+
+                if (next.isError()) {
+                    final Exception error = next.error();
+                    if (logger.isInfo()) {
+                        logger.handleException("Got Exception from client connection or server", error);
                     }
-
+                    errorHandler.handleException(error);
+                    lastError = error;
+                    break;
+                } else if (next.isDone()) {
+                    this.connectionStatus.set(ConnectionStatus.DISCONNECTED);
+                    break;
+                } else if (!next.isPresent()) {
+                    pause = true;
+                } else {
+                    pause = false;
                 }
-                now.set(System.currentTimeMillis());
-                if (now.get() - lastTime > cleanUpInterval ) {
-                    lastTime = now.get();
-                    cleanup();
-                }
+            }
+            now.set(System.currentTimeMillis());
+            if (now.get() - lastTime > cleanUpInterval) {
+                lastTime = now.get();
+                cleanup();
             }
 
             if (doStop.get()) {
                 serverOutputChannel.send(Disconnect.DISCONNECT);
                 this.connected = false;
+                this.connectionStatus.set(ConnectionStatus.DISCONNECTING);
             } else if (lastError != null) {
                 serverOutputChannel.send(Disconnect.DISCONNECT);
                 this.connected = false;
+                this.connectionStatus.set(ConnectionStatus.DISCONNECTING);
                 if (logger.isInfo()) {
                     logger.handleException("There is an error and the client connection is stopping", lastError);
                 }
@@ -210,7 +207,7 @@ public class ClientActor {
         } catch (Exception exception) {
             serverOutputChannel.send(Disconnect.DISCONNECT);
             this.connected = false;
-            errorHandler.handleError(exception);
+            errorHandler.handleException(exception);
         }
     }
 
@@ -300,7 +297,7 @@ public class ClientActor {
         if (!serverError.getErrorType().isKeepConnectionOpen()) {
             throw new ServerErrorException(serverError);
         } else {
-            errorHandler.handleError(new ServerErrorException(serverError));
+            errorHandler.handleException(new ServerErrorException(serverError));
         }
     }
 
@@ -352,6 +349,7 @@ public class ClientActor {
     private void handleServerConnectInfo(final ServerInformation newServerInfo) {
         serverInformation.set(newServerInfo);
         this.connected = true;
+        this.connectionStatus.set(ConnectionStatus.CONNECTED);
         serverOutputChannel.send(connectInfo);
     }
 
@@ -381,9 +379,9 @@ public class ClientActor {
      * @return a Subscription for the response.
      */
     public Subscription request(String subject, byte[] data) {
-        final String replyTo = this.nextInbox();
-        final Subscription subscription = subscribe(subject);
-        clientInputActions.add(new Unsubscribe(subscription.sid(), 1));
+        final String replyTo = this.nextInbox(subject);
+        final Subscription subscription = subscribe(replyTo);
+        clientInputActions.send(new Unsubscribe(subscription.sid(), 1));
         this.publish(subject, replyTo, data);
         return subscription;
     }
@@ -406,7 +404,7 @@ public class ClientActor {
      * @param body    the message body
      */
     public void publish(String subject, String replyTo, byte[] body) {
-        clientInputActions.add(new Publish(subject, replyTo, body));
+        clientInputActions.send(new Publish(subject, replyTo, body));
     }
 
     /**
@@ -432,7 +430,32 @@ public class ClientActor {
     public Subscription subscribe(final String subject, final String queueGroup) {
         final String sid = Long.toString(this.sid.incrementAndGet());
         final Subscribe subscribe = new Subscribe(subject, queueGroup, sid, this.now.get());
-        this.clientInputActions.add(subscribe);
+        this.clientInputActions.send(subscribe);
         return subscribe.getSubscription();
+    }
+
+    @Override
+    public void close() {
+        this.stop();
+    }
+
+    @Override
+    public void close(Duration duration) throws InterruptedException, TimeoutException {
+        this.close();
+        Thread.sleep(duration.toMillis());
+        //TODO wait on close signal.
+
+    }
+
+    @Override
+    public ConnectionStatus getStatus() {
+        //TODO
+        return null;
+    }
+
+    @Override
+    public Collection<ConnectURL> getServers() {
+        //TODO
+        return null;
     }
 }

@@ -11,5 +11,7 @@ public class ServerErrorException extends RuntimeException{
     }
 
 
-
+    public ServerError getServerError() {
+        return serverError;
+    }
 }
