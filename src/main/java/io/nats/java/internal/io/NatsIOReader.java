@@ -1,6 +1,7 @@
 package io.nats.java.internal.io;
 
 import io.nats.java.internal.ByteUtils;
+import io.nats.java.internal.NATSProtocolVerb;
 import io.nats.java.internal.ServerMessage;
 import io.nats.java.internal.actions.OutputQueue;
 
@@ -106,29 +107,20 @@ public class NatsIOReader {
 
         if (highWaterMark - index < size) {
             if (buffer.length - index < size) {
-
                 final ByteBuffer byteBuffer = ByteBuffer.allocate((index - startOfBuffer) + 2 + size);
-
                 byteBuffer.put(buffer, startOfBuffer, index - startOfBuffer);
-
                 int bytesRead;
-
                 do  {
-
                     bytesRead = inputStream.read(buffer);
-
                     if (bytesRead > 0) {
                         byteBuffer.put(buffer, 0, bytesRead);
                     }
                 }while (bytesRead != -1 && bytesRead != 0);
-
-
                 byte[] b = new byte[byteBuffer.remaining()];
                 byteBuffer.get(b);
-
-
-
+                final ServerMessage serverMessage = new ServerMessage(b, NATSProtocolVerb.MESSAGE, indexes, numFeatures[0]);
             } else {
+
 
             }
         }

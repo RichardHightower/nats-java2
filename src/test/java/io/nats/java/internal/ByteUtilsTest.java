@@ -37,7 +37,7 @@ public class ByteUtilsTest {
 
         assertArrayEquals(new int[]{4,6,7,9,10,12,13,14,16,17}, indexes);
 
-        final ServerMessage serverMessage = new ServerMessage(bytes, NATSProtocolVerb.MESSAGE, indexes);
+        final ServerMessage serverMessage = new ServerMessage(bytes, NATSProtocolVerb.MESSAGE, indexes, numFeatures[0]);
 
         assertEquals("su", serverMessage.firstArgAsString());
         assertEquals("si", serverMessage.secondArgAsString());

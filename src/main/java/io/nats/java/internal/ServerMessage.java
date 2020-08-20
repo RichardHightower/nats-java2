@@ -7,22 +7,29 @@ public class ServerMessage implements VerbHolder {
     private final NATSProtocolVerb verb;
 
     private final int[] indexes;
+    private final int args;
 
-    public ServerMessage(byte[] bytes, NATSProtocolVerb verb, int[] indexes) {
+    public ServerMessage(byte[] bytes, NATSProtocolVerb verb, int[] indexes, int args) {
         this.bytes = bytes;
         this.verb = verb;
         this.indexes = indexes;
+        this.args = args;
     }
 
     public ServerMessage(byte[] bytes, NATSProtocolVerb verb) {
         this.bytes = bytes;
         this.verb = verb;
         this.indexes = null;
+        this.args = -1;
     }
 
 
     public byte[] getBytes() {
         return bytes;
+    }
+
+    public int getArgs() {
+        return args;
     }
 
     public NATSProtocolVerb verb() {
